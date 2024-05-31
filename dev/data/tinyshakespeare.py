@@ -5,9 +5,13 @@ Download and tokenizes the TinyShakespeare dataset.
 - output: a newly created tinyshakespeare/ folder.
 """
 import os
-from data_common import download_file
+import tiktoken
+from data_common import download_file, write_datafile
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "tinyshakespeare")
+
+enc = tiktoken.get_encoding("gpt2")
+encode = lambda s: enc.encode(s, allowed_special={'<|endoftext|>'})
 
 def download():
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -20,7 +24,18 @@ def download():
         print(f"{data_filename} already exists, skipping downloading...")
 
 def tokenize():
-
+    data_filename = os.path.join(DATA_DIR, "tiny_shakespeare.txt")
+    text = open(data_filename, 'r').read()
+    # treat every statement in the dialog as a separate doc.
+    text = "<|endoftext|>" + text
+    text = text.replace('\n\n', '\n\n<|endoftext|>')
+    tokens = encode(text)
+    validation_tokens = tokens[:32768]
+    train_tokens = tokens[32768:]
+    validation_filename = os.path.join(DATA_DIR, "tiny_shakespeare_val.bin")
+    train_filename = os.path.join(DATA_DIR, "tiny_shakespeare_train.bin")
+    write_datafile(validation_filename, validation_tokens)
+    write_datafile(train_filename, train_tokens)
 
 if __name__ == "__main__":
     download()
